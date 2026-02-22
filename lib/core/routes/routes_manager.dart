@@ -1,13 +1,14 @@
 import 'package:flutter/cupertino.dart';
 import 'package:transite_way/feature/login/login.dart';
 import 'package:transite_way/feature/onboarding/screen/onboarding_screen.dart';
+import '../../feature/forget_password/presentation/screens/recovery_screen.dart';
 import '../../feature/splash/splash.dart';
 
 abstract class RoutesManager{
   static const String splash="/splash";
   static const String onboardingScreen="/onboardingScreen";
   static const String login="/login";
-
+  static const String forgetPassword = "/forgetPassword";
 
 
 
@@ -15,7 +16,7 @@ abstract class RoutesManager{
     splash:(context)=>Splash(),
     onboardingScreen:(context)=>OnboardingScreen(),
     login:(context)=>LoginScreen(),
-
+    forgetPassword: (context) => const PasswordRecoveryScreen(),
 
   };
 }
