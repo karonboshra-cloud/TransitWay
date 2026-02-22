@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../core/routes/routes_manager.dart';
+import 'data/login_web_services.dart';
+import '../home/home_screen.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -10,9 +12,50 @@ class LoginScreen extends StatefulWidget {
 
 class _LoginScreenState extends State<LoginScreen> {
   bool _isPasswordVisible = false;
+  bool _isLoading = false;
   final TextEditingController _emailController = TextEditingController();
-  final TextEditingController _passwordController = TextEditingController();
+  final _passwordController = TextEditingController();
   final _formKey = GlobalKey<FormState>();
+
+  @override
+  void dispose() {
+    _emailController.dispose();
+    _passwordController.dispose();
+    super.dispose();
+  }
+
+  void _handleSignIn() async {
+    if (_formKey.currentState!.validate()) {
+      setState(() => _isLoading = true);
+
+      try {
+        final result = await LoginWebServices().login(
+          _emailController.text,
+          _passwordController.text,
+        );
+
+        if (!mounted) return;
+        setState(() => _isLoading = false);
+
+        Navigator.pushAndRemoveUntil(
+          context,
+          MaterialPageRoute(builder: (context) => const HomeScreen()),
+              (route) => false,
+        );
+      } catch (error) {
+        if (!mounted) return;
+        setState(() => _isLoading = false);
+
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(error.toString()),
+            backgroundColor: Colors.red,
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -41,6 +84,7 @@ class _LoginScreenState extends State<LoginScreen> {
                   const SizedBox(height: 40),
                   TextFormField(
                     controller: _emailController,
+                    keyboardType: TextInputType.emailAddress,
                     decoration: InputDecoration(
                       hintText: 'Email',
                       prefixIcon: const Icon(Icons.email_outlined, size: 22),
@@ -50,6 +94,11 @@ class _LoginScreenState extends State<LoginScreen> {
                         borderSide: const BorderSide(color: Color(0xFFE0E0E0)),
                       ),
                     ),
+                    validator: (value) {
+                      if (value == null || value.isEmpty) return 'Please enter your email';
+                      if (!RegExp(r'^[\w-.]+@([\w-]+\.)+[\w-]{2,4}$').hasMatch(value)) return 'Invalid email format';
+                      return null;
+                    },
                   ),
                   const SizedBox(height: 20),
                   TextFormField(
@@ -68,13 +117,16 @@ class _LoginScreenState extends State<LoginScreen> {
                         borderSide: const BorderSide(color: Color(0xFFE0E0E0)),
                       ),
                     ),
+                    validator: (value) {
+                      if (value == null || value.isEmpty) return 'Please enter your password';
+                      if (value.length < 8) return 'Password must be at least 8 characters';
+                      return null;
+                    },
                   ),
                   Align(
                     alignment: Alignment.centerRight,
                     child: TextButton(
-                      onPressed: () {
-                        Navigator.pushNamed(context, RoutesManager.forgetPassword);
-                      },
+                      onPressed: () => Navigator.pushNamed(context, RoutesManager.forgetPassword),
                       child: const Text(
                         'Forgot Password?',
                         style: TextStyle(color: Color(0xFF064E3B), fontWeight: FontWeight.bold),
@@ -86,18 +138,20 @@ class _LoginScreenState extends State<LoginScreen> {
                     width: double.infinity,
                     height: 55,
                     child: ElevatedButton(
-                      onPressed: _handleSignIn,
+                      onPressed: _isLoading ? null : _handleSignIn,
                       style: ElevatedButton.styleFrom(
                         backgroundColor: const Color(0xFF064E3B),
                         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                         elevation: 0,
                       ),
-                      child: const Text('Sign In', style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold)),
+                      child: _isLoading
+                          ? const SizedBox(width: 25, height: 25, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
+                          : const Text('Sign In', style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold)),
                     ),
                   ),
                   const SizedBox(height: 30),
-                  Row(
-                    children: const [
+                  const Row(
+                    children: [
                       Expanded(child: Divider(color: Color(0xFFEEEEEE), thickness: 1)),
                       Padding(
                         padding: EdgeInsets.symmetric(horizontal: 10),
@@ -142,15 +196,5 @@ class _LoginScreenState extends State<LoginScreen> {
         ),
       ),
     );
-  }
-
-  void _handleSignIn() {
-    if (_emailController.text.isEmpty || _passwordController.text.length < 8) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please enter valid credentials')),
-      );
-    } else {
-      debugPrint("Logging in with: ${_emailController.text}");
-    }
   }
 }
