@@ -22,14 +22,14 @@ class _LoginScreenState extends State<LoginScreen> {
     return Scaffold(
       backgroundColor: Colors.white,
       body: SafeArea(
-        child: SingleChildScrollView(
+        child: Padding(
           padding: const EdgeInsets.symmetric(horizontal: 30.0),
           child: Form(
             key: _formKey,
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const SizedBox(height: 170),
+                const SizedBox(height: 70),
 
                 const Text(
                   'Please Sign In',
@@ -135,9 +135,8 @@ class _LoginScreenState extends State<LoginScreen> {
                   ),
                 ),
 
-                const SizedBox(height: 40),
+                const Spacer(),
 
-                SizedBox(height: 90.h,),
                 Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
@@ -151,6 +150,7 @@ class _LoginScreenState extends State<LoginScreen> {
                     ),
                   ],
                 ),
+                const SizedBox(height: 20),
               ],
             ),
           ),
