@@ -27,8 +27,8 @@ class _SplashState extends State<Splash> {
       statusBarBrightness: Brightness.dark,
 
     ));
-    Timer(Duration(seconds: 2),(){
-      Navigator.pushReplacementNamed(context, RoutesManager.login);
+    Timer(Duration(seconds: 3),(){
+      Navigator.pushReplacementNamed(context, RoutesManager.onboardingScreen);
 
       });
   }

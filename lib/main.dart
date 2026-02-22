@@ -19,7 +19,7 @@ class TransitWay extends StatelessWidget {
       splitScreenMode: true,
       child: MaterialApp(
         debugShowCheckedModeBanner: false,
-        initialRoute:RoutesManager.login,
+        initialRoute:RoutesManager.splash,
         routes: RoutesManager.routes,
         theme:ThemeManager.light ,
         themeMode:ThemeMode.light ,

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_screenutil/flutter_screenutil.dart';
 
 void main() => runApp(const MaterialApp(home: LoginScreen()));
 
@@ -22,13 +23,13 @@ class _LoginScreenState extends State<LoginScreen> {
       backgroundColor: Colors.white,
       body: SafeArea(
         child: SingleChildScrollView(
-          padding: const EdgeInsets.symmetric(horizontal: 24.0),
+          padding: const EdgeInsets.symmetric(horizontal: 30.0),
           child: Form(
             key: _formKey,
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const SizedBox(height: 60),
+                const SizedBox(height: 170),
 
                 const Text(
                   'Please Sign In',
@@ -36,12 +37,12 @@ class _LoginScreenState extends State<LoginScreen> {
                 ),
                 const SizedBox(height: 8),
                 const Text(
-                  'Enter your account details for a personalised experience.',
+                  'Enter your account details for a personalised \nexperience.',
                   style: TextStyle(fontSize: 15, color: Colors.grey, height: 1.5),
                 ),
                 const SizedBox(height: 40),
 
-                // حقل البريد الإلكتروني
+
                 TextFormField(
                   controller: _emailController,
                   decoration: InputDecoration(
@@ -56,7 +57,7 @@ class _LoginScreenState extends State<LoginScreen> {
                 ),
                 const SizedBox(height: 20),
 
-                // حقل كلمة المرور
+
                 TextFormField(
                   controller: _passwordController,
                   obscureText: !_isPasswordVisible,
@@ -75,7 +76,7 @@ class _LoginScreenState extends State<LoginScreen> {
                   ),
                 ),
 
-                // زر نسيت كلمة المرور
+
                 Align(
                   alignment: Alignment.centerRight,
                   child: TextButton(
@@ -136,7 +137,7 @@ class _LoginScreenState extends State<LoginScreen> {
 
                 const SizedBox(height: 40),
 
-                // Footer (Sign Up)
+                SizedBox(height: 90.h,),
                 Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [

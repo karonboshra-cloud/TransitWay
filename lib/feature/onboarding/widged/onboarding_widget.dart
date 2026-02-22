@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:transite_way/feature/login/login.dart';
 import '../model/onboarding_model.dart';
 
 class OnboardingItem extends StatelessWidget {
@@ -84,7 +85,13 @@ class OnboardingItem extends StatelessWidget {
                     width: double.infinity,
                     height: 55,
                     child: ElevatedButton(
-                      onPressed: onGetStarted,
+                      onPressed: () {
+                        Navigator.pushReplacement(
+                          context,
+                          MaterialPageRoute(builder: (context) => const LoginScreen()),
+                        );
+                      },
+
                       style: ElevatedButton.styleFrom(
                         backgroundColor: const Color(0xFF2E4E45),
                         shape: RoundedRectangleBorder(
@@ -92,7 +99,8 @@ class OnboardingItem extends StatelessWidget {
                         ),
                         elevation: 0,
                       ),
-                      child: const Text(
+                      child:  Text(
+
                         "Get Started",
                         style: TextStyle(
                           color: Colors.white,
