@@ -15,22 +15,36 @@ class LoginWebServices {
         }),
       );
 
-      print("Login Status: ${response.statusCode}");
-      print("Login Body: ${response.body}");
+      if (response.statusCode == 200) {
+        return jsonDecode(response.body);
+      } else {
+        throw "Invalid email or password";
+      }
+    } catch (e) {
+      if (e.toString() == "Invalid email or password") {
+        rethrow;
+      }
+      throw "Check your internet connection and try again";
+    }
+  }
+
+  Future<Map<String, dynamic>> loginWithGoogle(String idToken) async {
+    try {
+      final response = await http.post(
+        Uri.parse('$baseUrl/api/Auth/google-login'),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({
+          'idToken': idToken,
+        }),
+      );
 
       if (response.statusCode == 200) {
         return jsonDecode(response.body);
       } else {
-        // تعديل هنا: أي رد غير ناجح من السيرفر هنرجعه بالجملة دي
-        throw "Invalid email or password";
+        throw "Google authentication failed on server";
       }
     } catch (e) {
-      // لو الخطأ هو الجملة اللي إحنا حددناها فوق، بنرفعها زي ما هي
-      if (e.toString() == "Invalid email or password") {
-        rethrow;
-      }
-      // لو خطأ في الشبكة أو السيرفر واقع مثلاً
-      throw "Check your internet connection and try again";
+      throw e.toString();
     }
   }
 }
