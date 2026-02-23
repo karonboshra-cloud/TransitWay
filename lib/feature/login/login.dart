@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:google_sign_in/google_sign_in.dart';
+import 'package:transite_way/feature/sign_up/presentation/screens/sign_up_screen.dart';
 import '../../core/routes/routes_manager.dart';
 import 'data/login_web_services.dart';
 import '../home/home_screen.dart';
@@ -211,7 +212,9 @@ class _LoginScreenState extends State<LoginScreen> {
                     children: [
                       const Text("Don't have an account? "),
                       GestureDetector(
-                        onTap: () {},
+                        onTap: () {
+                          Navigator.push(context, MaterialPageRoute(builder: (context) => const SignUpPage()));
+                        },
                         child: const Text(
                           "Sign Up",
                           style: TextStyle(color: Color(0xFF064E3B), fontWeight: FontWeight.bold),
