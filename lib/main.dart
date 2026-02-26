@@ -10,20 +10,23 @@ void main() {
 class TransitWay extends StatelessWidget {
   const TransitWay({super.key});
 
-  // This widget is the root of your application.
   @override
   Widget build(BuildContext context) {
     return ScreenUtilInit(
       designSize: const Size(375, 812),
       minTextAdapt: true,
       splitScreenMode: true,
-      child: MaterialApp(
-        debugShowCheckedModeBanner: false,
-        initialRoute:RoutesManager.splash,
-        routes: RoutesManager.routes,
-        theme:ThemeManager.light ,
-        themeMode:ThemeMode.light ,
-        darkTheme: ThemeManager.dark,
-      ),
+      builder: (context, child) {
+        return MaterialApp(
+          debugShowCheckedModeBanner: false,
+          title: 'Transit Way',
+          initialRoute: RoutesManager.splash,
+          routes: RoutesManager.routes,
+          theme: ThemeManager.light,
+          themeMode: ThemeMode.light,
+          darkTheme: ThemeManager.dark,
+        );
+      },
     );
-  }}
+  }
+}

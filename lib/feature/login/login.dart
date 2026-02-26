@@ -2,8 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:transite_way/feature/sign_up/presentation/screens/sign_up_screen.dart';
 import '../../core/routes/routes_manager.dart';
+import '../home/presentation/widgets/main_wrapper.dart';
 import 'data/login_web_services.dart';
-import '../home/home_screen.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -39,7 +39,7 @@ class _LoginScreenState extends State<LoginScreen> {
         setState(() => _isLoading = false);
         Navigator.pushAndRemoveUntil(
           context,
-          MaterialPageRoute(builder: (context) => const HomeScreen()),
+          MaterialPageRoute(builder: (context) => const MainWrapper()),
               (route) => false,
         );
       } catch (error) {
@@ -73,7 +73,7 @@ class _LoginScreenState extends State<LoginScreen> {
 
       Navigator.pushAndRemoveUntil(
         context,
-        MaterialPageRoute(builder: (context) => const HomeScreen()),
+        MaterialPageRoute(builder: (context) => const MainWrapper()),
             (route) => false,
       );
     } catch (error) {
