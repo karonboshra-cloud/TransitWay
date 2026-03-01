@@ -91,7 +91,7 @@ class _PasswordRecoveryScreenState extends State<PasswordRecoveryScreen> {
                 },
               ),
 
-              SizedBox(height: 150.h), // مسافة ثابتة لحل مشكلة الـ Spacer مع السكرول
+              SizedBox(height: 150.h),
 
               SizedBox(
                 width: double.infinity,
@@ -105,7 +105,7 @@ class _PasswordRecoveryScreenState extends State<PasswordRecoveryScreen> {
                     if (_formKey.currentState!.validate()) {
                       setState(() => _isLoading = true);
 
-                      // --- Skip API & Use Fake Data ---
+                      // محاكاة تأخير الـ API حالياً
                       await Future.delayed(const Duration(seconds: 1));
                       String? fakeEmail = "youssefmahmoud772@gmail.com";
 
