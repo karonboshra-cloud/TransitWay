@@ -4,6 +4,38 @@ import 'package:http/http.dart' as http;
 class ForgetPasswordWebServices {
   final String baseUrl = "http://transit-way.runasp.net";
 
+  // البحث عن الإيميل الحقيقي باستخدام رقم الموبايل
+  Future<String?> getEmailByPhone(String phone) async {
+    try {
+      final response = await http.post(
+        Uri.parse('$baseUrl/api/Auth/get-email-by-phone'),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({'phone': phone}),
+      );
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        return data['email'];
+      }
+      return null;
+    } catch (e) {
+      print("Error in getEmailByPhone: $e");
+      return null;
+    }
+  }
+
+  // دالة إخفاء الإيميل (تظهر أول حرف وآخر رقمين)
+  String maskEmail(String email) {
+    final parts = email.split('@');
+    final name = parts[0];
+    final domain = parts[1];
+
+    if (name.length <= 3) return email;
+
+    // تأخذ أول حرف + نجوم + آخر رقمين
+    return "${name[0]}${'*' * (name.length - 3)}${name.substring(name.length - 2)}@$domain";
+  }
+
+  // طلب إرسال الرمز (OTP)
   Future<bool> requestReset(String email) async {
     try {
       final response = await http.post(
@@ -11,7 +43,6 @@ class ForgetPasswordWebServices {
         headers: {'Content-Type': 'application/json'},
         body: jsonEncode({'email': email}),
       );
-      // أحياناً السيرفر بيرجع 200 أو 201 في حالة النجاح
       return response.statusCode == 200 || response.statusCode == 201;
     } catch (e) {
       print("Error in requestReset: $e");
@@ -19,26 +50,21 @@ class ForgetPasswordWebServices {
     }
   }
 
+  // التحقق من الرمز
   Future<bool> verifyOtp({required String email, required String otp}) async {
     try {
       final response = await http.post(
         Uri.parse('$baseUrl/api/Auth/verify-code'),
         headers: {'Content-Type': 'application/json'},
-        body: jsonEncode({
-          "code": otp,
-          "Email": email // تأكد من الـ Case (حرف E كبير) حسب متطلبات السيرفر بتاعك
-        }),
+        body: jsonEncode({"code": otp, "Email": email}),
       );
-
-      // طباعة الـ Body عشان تعرف لو السيرفر باعت رسالة خطأ معينة
-      print("Verify OTP Response: ${response.body}");
       return response.statusCode == 200;
     } catch (e) {
-      print("Error in verifyOtp: $e");
       return false;
     }
   }
 
+  // تعيين كلمة المرور الجديدة
   Future<bool> confirmReset(String email, String code, String newPassword) async {
     try {
       final response = await http.post(
@@ -52,7 +78,6 @@ class ForgetPasswordWebServices {
       );
       return response.statusCode == 200;
     } catch (e) {
-      print("Error in confirmReset: $e");
       return false;
     }
   }
