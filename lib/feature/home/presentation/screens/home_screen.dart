@@ -27,7 +27,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 height: 1.sh - MediaQuery.of(context).padding.top - 80.h,
                 child: Stack(
                   children: [
-                    Container(
+                    SizedBox(
                       height: 0.45.sh,
                       width: double.infinity,
                       child: Image.asset(
