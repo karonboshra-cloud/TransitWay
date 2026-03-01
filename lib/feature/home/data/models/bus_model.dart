@@ -11,7 +11,6 @@ class BusModel {
     required this.status,
   });
 
-  // بكرة لما يجهز الـ API هنستخدم الفنكشن دي لتحويل JSON لـ Object
   factory BusModel.fromJson(Map<String, dynamic> json) {
     return BusModel(
       busNumber: json['bus_number'],
