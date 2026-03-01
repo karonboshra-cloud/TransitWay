@@ -23,8 +23,8 @@ class _ConfirmEmailScreenState extends State<ConfirmEmailScreen> {
 
   void _sendOtp() async {
     setState(() => _isLoading = true);
-
-    bool ok = await ForgetPasswordWebServices().requestReset(widget.fullEmail);
+    bool ok = true;
+    // bool ok = await ForgetPasswordWebServices().requestReset(widget.fullEmail);
 
     setState(() => _isLoading = false);
 
