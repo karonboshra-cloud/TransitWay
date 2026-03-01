@@ -40,7 +40,6 @@ class ForgetPasswordWebServices {
         headers: {'Content-Type': 'application/json'},
         body: jsonEncode({'email': email}),
       );
-      // النجاح قد يكون 200 أو 201
       return response.statusCode == 200 || response.statusCode == 201;
     } catch (e) {
       print("Error in requestReset: $e");
@@ -56,10 +55,9 @@ class ForgetPasswordWebServices {
         headers: {'Content-Type': 'application/json'},
         body: jsonEncode({
           "code": otp,
-          "Email": email // تأكد من الـ Case (حرف E كبير)
+          "Email": email
         }),
       );
-
       print("Verify OTP Response: ${response.body}");
       return response.statusCode == 200;
     } catch (e) {

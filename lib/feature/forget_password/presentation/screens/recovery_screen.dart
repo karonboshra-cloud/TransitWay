@@ -16,6 +16,7 @@ class _PasswordRecoveryScreenState extends State<PasswordRecoveryScreen> {
   bool _isLoading = false;
 
   void _showSnackBar(String message, bool isError) {
+    if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text(message, textAlign: TextAlign.center),
@@ -50,17 +51,10 @@ class _PasswordRecoveryScreenState extends State<PasswordRecoveryScreen> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               SizedBox(height: 15.h),
-              Text(
-                  "Password Recovery",
-                  style: TextStyle(fontSize: 24.sp, fontWeight: FontWeight.bold, color: const Color(0xFF1E232C))
-              ),
+              Text("Password Recovery", style: TextStyle(fontSize: 24.sp, fontWeight: FontWeight.bold, color: const Color(0xFF1E232C))),
               SizedBox(height: 10.h),
-              Text(
-                  "Enter your phone number to recover your password",
-                  style: TextStyle(fontSize: 14.sp, color: const Color(0xFF8391A1))
-              ),
+              Text("Enter your phone number to recover your password", style: TextStyle(fontSize: 14.sp, color: const Color(0xFF8391A1))),
               SizedBox(height: 35.h),
-
               TextFormField(
                 controller: _phoneController,
                 keyboardType: TextInputType.phone,
@@ -71,68 +65,37 @@ class _PasswordRecoveryScreenState extends State<PasswordRecoveryScreen> {
                   hintStyle: TextStyle(color: Colors.grey, fontSize: 14.sp),
                   filled: true,
                   fillColor: const Color(0xFFF7F8F9),
-                  enabledBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12.r),
-                      borderSide: const BorderSide(color: Color(0xFFE8ECF4))
-                  ),
-                  focusedBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12.r),
-                      borderSide: const BorderSide(color: Color(0XFF054F3A), width: 1.5)
-                  ),
+                  enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12.r), borderSide: const BorderSide(color: Color(0xFFE8ECF4))),
+                  focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12.r), borderSide: const BorderSide(color: Color(0XFF054F3A), width: 1.5)),
                 ),
-                validator: (value) {
-                  if (value == null || value.isEmpty) {
-                    return "Please enter your phone number";
-                  }
-                  if (value.length < 11) {
-                    return "Please enter a valid phone number";
-                  }
-                  return null;
-                },
+                validator: (v) => (v == null || v.isEmpty || v.length < 11) ? "Please enter a valid phone number" : null,
               ),
-
               SizedBox(height: 150.h),
-
               SizedBox(
                 width: double.infinity,
                 height: 56.h,
                 child: ElevatedButton(
-                  style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0XFF054F3A),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12.r))
-                  ),
+                  style: ElevatedButton.styleFrom(backgroundColor: const Color(0XFF054F3A), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12.r))),
                   onPressed: _isLoading ? null : () async {
                     if (_formKey.currentState!.validate()) {
                       setState(() => _isLoading = true);
 
-                      // محاكاة تأخير الـ API حالياً
+                      // مؤقتاً للتجربة (Skip API)
                       await Future.delayed(const Duration(seconds: 1));
                       String? fakeEmail = "youssefmahmoud772@gmail.com";
 
                       setState(() => _isLoading = false);
 
                       if (fakeEmail != null && mounted) {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (_) => ConfirmEmailScreen(fullEmail: fakeEmail),
-                          ),
-                        );
+                        Navigator.push(context, MaterialPageRoute(builder: (_) => ConfirmEmailScreen(fullEmail: fakeEmail)));
                       } else if (mounted) {
-                        _showSnackBar("Could not find an account with this number", true);
+                        _showSnackBar("Could not find account", true);
                       }
                     }
                   },
                   child: _isLoading
-                      ? SizedBox(
-                    width: 24.w,
-                    height: 24.w,
-                    child: const CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
-                  )
-                      : Text(
-                    "Find Account",
-                    style: TextStyle(color: Colors.white, fontSize: 16.sp, fontWeight: FontWeight.bold),
-                  ),
+                      ? SizedBox(width: 24.w, height: 24.w, child: const CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
+                      : Text("Find Account", style: TextStyle(color: Colors.white, fontSize: 16.sp, fontWeight: FontWeight.bold)),
                 ),
               ),
               SizedBox(height: 30.h),
