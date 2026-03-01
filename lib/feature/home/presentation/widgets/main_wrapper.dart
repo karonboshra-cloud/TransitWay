@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
-
+import '../../../profile/profile_screen.dart';
+import '../../../tickets/tickets.dart';
 import '../screens/home_screen.dart';
 
 
@@ -16,8 +17,10 @@ class _MainWrapperState extends State<MainWrapper> {
 
   final List<Widget> _pages = [
     const HomeScreen(),
-    const Center(child: Text("Tickets Screen")),
+    const MyTicketsScreen(),
     const Center(child: Text("Scan QR Screen")),
+    const ProfileScreen(),
+    const Center(child: Text("Tickets Screen")),
     const Center(child: Text("Profile Screen")),
   ];
 
