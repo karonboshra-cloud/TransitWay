@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:transite_way/feature/driver/add_tickets.dart';
+import 'package:transite_way/feature/driver/profile_driver.dart';
 import 'package:transite_way/feature/login/login.dart';
 import 'package:transite_way/feature/onboarding/screen/onboarding_screen.dart';
 import 'package:transite_way/feature/role/role_select_screen.dart';
@@ -31,6 +33,10 @@ abstract class RoutesManager {
   static const String tickets = "/tickets";
   static const String profile = "/profile";
   static const String qrScanner = "/qrScanner";
+  static const String driver = "/driver";
+  static const String profileDriver = "/profileDriver";
+
+
 
   // دمج الثوابت من الطرفين
   static const String tripTracking = "/tripTracking";
@@ -38,6 +44,9 @@ abstract class RoutesManager {
 
   static Map<String, WidgetBuilder> routes = {
     splash: (context) => const Splash(),
+    profileDriver: (context) => const ProfileScreenDriver(),
+
+    driver: (context) => const AddTicketsScreen(),
     role: (context) => RoleSelectScreen(),
     onboardingScreen: (context) => const OnboardingScreen(),
     login: (context) => const LoginScreen(),

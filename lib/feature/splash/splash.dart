@@ -29,7 +29,7 @@ class _SplashState extends State<Splash> {
 
     ));
     Timer(Duration(seconds: 3),(){
-      Navigator.pushReplacementNamed(context, RoutesManager.role);
+      Navigator.pushReplacementNamed(context, RoutesManager.driverHome);
 
       });
   }
