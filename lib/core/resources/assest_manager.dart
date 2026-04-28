@@ -9,18 +9,6 @@ abstract class ImageAssets{
   static const String success="$base/success.jpg";
   static const String points="$base/points.png";
   static const String PaymentSuccess="$base/payment.png";
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+  static const String map="$base/maps.jpg";
+  static const String boy="assets/logo/3.png";
 }
