@@ -4,9 +4,12 @@ import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
-import '../../data/home_repository.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:transite_way/feature/driver/presentation/screens/widgets/skeleton_loader.dart';
 import '../widgets/custom_points_badge.dart';
 import 'tracking_view.dart';
+import '../../../../core/networking/api_constants.dart';
+import '../../../../core/networking/supabase_init.dart';
 
 class BusTrackingScreen extends StatefulWidget {
   const BusTrackingScreen({super.key});
@@ -16,13 +19,17 @@ class BusTrackingScreen extends StatefulWidget {
 }
 
 class _BusTrackingScreenState extends State<BusTrackingScreen> with TickerProviderStateMixin {
-  final HomeRepository _repository = HomeRepository();
   final MapController _mapController = MapController();
   LatLng? _busLocation; 
   bool _isTracking = true;
+  bool _isLoading = true;
 
   final Color appGreen = const Color(0xFF1B4D3E);
   List<Marker> _cachedMarkers = [];
+  Timer? _fallbackTimer;
+  StreamSubscription<List<Map<String, dynamic>>>? _busStreamSubscription;
+  RealtimeChannel? _broadcastChannel;
+  AnimationController? _movementController;
 
   @override
   void initState() {
@@ -30,8 +37,17 @@ class _BusTrackingScreenState extends State<BusTrackingScreen> with TickerProvid
     WidgetsBinding.instance.addPostFrameCallback((_) {
       final args = ModalRoute.of(context)?.settings.arguments as Map<String, dynamic>?;
       if (args != null) {
-        final int busId = args['busId'] ?? 0;
-        if (busId != 0) _startLiveTracking(busId);
+        final dynamic busId = args['busId'];
+        final dynamic busNum = args['busNumber'];
+        
+        if (args['lat'] != null && args['lng'] != null) {
+          setState(() {
+            _busLocation = LatLng((args['lat'] as num).toDouble(), (args['lng'] as num).toDouble());
+            _isLoading = false;
+          });
+        }
+        
+        _startLiveTracking(busId, busNum);
       }
     });
   }
@@ -39,15 +55,20 @@ class _BusTrackingScreenState extends State<BusTrackingScreen> with TickerProvid
   @override
   void dispose() {
     _isTracking = false;
+    _busStreamSubscription?.cancel();
+    _broadcastChannel?.unsubscribe();
+    _fallbackTimer?.cancel();
+    _movementController?.dispose();
     _mapController.dispose();
     super.dispose();
   }
 
   Color _getRouteColor(String? zone) {
     if (zone == null) return const Color(0xFF1B6A4C);
-    if (zone.toLowerCase().contains("cairo")) return const Color(0xFF1B6A4C);
-    if (zone.toLowerCase().contains("shrouk")) return const Color(0xFF0D47A1);
-    if (zone.toLowerCase().contains("route2")) return const Color(0xFFB71C1C);
+    final z = zone.toLowerCase();
+    if (z.contains("cairo")) return const Color(0xFF1B6A4C);
+    if (z.contains("shrouk")) return const Color(0xFF0D47A1);
+    if (z.contains("route2")) return const Color(0xFFB71C1C);
     return const Color(0xFF1B6A4C);
   }
 
@@ -70,50 +91,96 @@ class _BusTrackingScreenState extends State<BusTrackingScreen> with TickerProvid
     controller.forward();
   }
 
-  void _animatedMove(LatLng destLocation) {
-    if (_busLocation == null) return;
-    final latTween = Tween<double>(begin: _busLocation!.latitude, end: destLocation.latitude);
-    final lngTween = Tween<double>(begin: _busLocation!.longitude, end: destLocation.longitude);
-    final controller = AnimationController(duration: const Duration(milliseconds: 1000), vsync: this);
-    final Animation<double> animation = CurvedAnimation(parent: controller, curve: Curves.easeInOut);
+  // Removed old _animatedMove in favor of continuous 60fps interpolation
 
-    controller.addListener(() {
-      if (mounted) {
-        setState(() => _busLocation = LatLng(latTween.evaluate(animation), lngTween.evaluate(animation)));
+  Future<void> _startLiveTracking(dynamic busId, dynamic busNum) async {
+    _busStreamSubscription?.cancel();
+    
+    try {
+      final initialData = await SupabaseConfig.client
+          .from(ApiConstants.busesTable)
+          .select()
+          .eq('id', busId.toString())
+          .maybeSingle();
+
+      if (initialData != null && mounted) {
+        _handleUpdate(initialData);
+        final String resolvedId = initialData['id'].toString();
+
+        _busStreamSubscription = SupabaseConfig.client
+            .from(ApiConstants.busesTable)
+            .stream(primaryKey: ['id'])
+            .eq('id', resolvedId)
+            .listen((data) {
+          if (!_isTracking || !mounted) return;
+          if (data.isNotEmpty) _handleUpdate(data.first);
+        });
+
+        _broadcastChannel?.unsubscribe();
+        _broadcastChannel = SupabaseConfig.client.channel('public-tracking');
+        _broadcastChannel!.onBroadcast(
+          event: 'bus_moved',
+          callback: (payload) {
+            if (!_isTracking || !mounted || payload == null) return;
+            if (payload['bus_id']?.toString() == resolvedId) {
+              _handleUpdate(payload);
+            }
+          }
+        ).subscribe();
+
+        _fallbackTimer?.cancel();
+        _fallbackTimer = Timer.periodic(const Duration(seconds: 10), (_) async {
+          if (!_isTracking || !mounted) return;
+          try {
+            final latest = await SupabaseConfig.client.from(ApiConstants.busesTable).select().eq('id', resolvedId).maybeSingle();
+            if (latest != null && mounted) _handleUpdate(latest);
+          } catch (_) {}
+        });
       }
-    });
-
-    controller.addStatusListener((status) {
-      if (status == AnimationStatus.completed || status == AnimationStatus.dismissed) controller.dispose();
-    });
-    controller.forward();
+    } catch (e) {
+      debugPrint("🛑 BusTracking Setup Error: $e");
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
+    }
   }
 
-  Future<void> _startLiveTracking(int busId) async {
-    bool isFirstLocation = true;
-    while (_isTracking && mounted) {
-      try {
-        final data = await _repository.getBuses();
-        final bus = data.firstWhere((item) => item['latestLocation'] != null && item['latestLocation']['busId'] == busId, orElse: () => null);
-        if (bus != null && mounted) {
-          final latest = bus['latestLocation'];
-          LatLng newLoc = LatLng((latest['latitude'] as num).toDouble(), (latest['longitude'] as num).toDouble());
-          
-          if (isFirstLocation) {
-            setState(() {
-              _busLocation = newLoc;
-              isFirstLocation = false;
-            });
-            _mapController.move(_busLocation!, 14.5);
-          } else if (newLoc != _busLocation) {
-            _animatedMove(newLoc);
-          }
-        }
-      } catch (e) {
-        debugPrint("Tracking Error: $e");
+  void _handleUpdate(Map<String, dynamic> data) {
+    final lat = data['current_lat'] ?? data['lat'];
+    final lng = data['current_lng'] ?? data['lng'];
+    if (lat != null && lng != null) {
+      final newLoc = LatLng((lat as num).toDouble(), (lng as num).toDouble());
+      if (_busLocation == null) {
+        setState(() => _busLocation = newLoc);
+        _mapController.move(newLoc, 14.5);
+      } else if (newLoc != _busLocation) {
+        _startGlidingAnimation(newLoc);
       }
-      await Future.delayed(const Duration(seconds: 3));
     }
+  }
+
+  void _startGlidingAnimation(LatLng destLocation) {
+    if (_busLocation == null) return;
+    final startLoc = _busLocation!;
+    
+    _movementController?.dispose();
+    _movementController = AnimationController(
+        vsync: this, 
+        duration: const Duration(milliseconds: 900)
+    );
+
+    final latTween = Tween<double>(begin: startLoc.latitude, end: destLocation.latitude);
+    final lngTween = Tween<double>(begin: startLoc.longitude, end: destLocation.longitude);
+
+    _movementController!.addListener(() {
+      if (!mounted) return;
+      final val = _movementController!.value;
+      final animLoc = LatLng(latTween.transform(val), lngTween.transform(val));
+      
+      setState(() => _busLocation = animLoc);
+      _mapController.move(animLoc, _mapController.camera.zoom);
+    });
+
+    _movementController!.forward();
   }
 
   void _updateMarkers(String busNum, Color routeColor, List<dynamic> stations) {
@@ -156,8 +223,8 @@ class _BusTrackingScreenState extends State<BusTrackingScreen> with TickerProvid
           Expanded(
             child: Stack(
               children: [
-                _buildMapSection(routeColor),
-                _buildDetailsBottomSheet(args, routeColor),
+                _buildMapSection(),
+                _buildDetailsCard(args, routeColor),
               ],
             ),
           ),
@@ -166,7 +233,7 @@ class _BusTrackingScreenState extends State<BusTrackingScreen> with TickerProvid
     );
   }
 
-  Widget _buildMapSection(Color routeColor) {
+  Widget _buildMapSection() {
     return RepaintBoundary(
       child: SizedBox(
         height: 0.35.sh,
@@ -182,8 +249,8 @@ class _BusTrackingScreenState extends State<BusTrackingScreen> with TickerProvid
             TileLayer(
               urlTemplate: 'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png',
               subdomains: const ['a', 'b', 'c', 'd'],
-              keepBuffer: 5, 
               tileDisplay: const TileDisplay.fadeIn(duration: Duration(milliseconds: 200)),
+              retinaMode: RetinaMode.isHighDensity(context),
             ),
             MarkerLayer(markers: _cachedMarkers),
           ],
@@ -192,42 +259,70 @@ class _BusTrackingScreenState extends State<BusTrackingScreen> with TickerProvid
     );
   }
 
-  Widget _buildDetailsBottomSheet(Map<String, dynamic> args, Color routeColor) {
-    final List<dynamic> stations = args['stations'] ?? [];
+  Widget _buildDetailsCard(Map<String, dynamic> args, Color routeColor) {
     return Positioned(
       top: 0.32.sh, left: 0, right: 0, bottom: 0,
-      child: Container(
-        padding: EdgeInsets.all(24.w),
-        decoration: BoxDecoration(
-          color: Colors.white, 
-          borderRadius: BorderRadius.vertical(top: Radius.circular(30.r)), 
-          boxShadow: [BoxShadow(color: Colors.black.withAlpha(25), blurRadius: 10, offset: const Offset(0, -5))],
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Text("Bus Details", style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
-            SizedBox(height: 15.h),
-            _buildBusInfoRow(args['busNumber']?.toString() ?? "---", appGreen),
-            SizedBox(height: 15.h),
-            Text("Arrives In ${args['arrivalTime']}", style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: appGreen)),
-            if (args['distance'] != null) Text("Distance: ${args['distance']} KM", style: TextStyle(fontSize: 13, color: Colors.grey)),
-            SizedBox(height: 25.h),
-            _buildRouteFlow(args['from'] ?? "", args['to'] ?? "", appGreen),
-            SizedBox(height: 20.h),
-            const Text("Route", style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
-            Expanded(child: ListView.builder(padding: EdgeInsets.only(top: 10.h), itemCount: stations.length, itemBuilder: (context, index) {
-              final station = stations[index];
-              var p = station['latLong'].toString().split('&');
-              LatLng pos = LatLng(double.parse(p[0].trim()), double.parse(p[1].trim()));
-              return InkWell(
-                onTap: () => _animatedMapMove(pos, 16.0),
-                child: _buildRouteStep(station['name'] ?? "Station", appGreen, isLast: index == stations.length - 1),
-              );
-            })),
-            _buildTrackButton(args, appGreen),
-          ],
-        ),
+      child: AnimatedSwitcher(
+        duration: const Duration(milliseconds: 300),
+        child: _isLoading ? _buildDetailsSkeleton() : _buildDetailsContent(args, routeColor),
+      ),
+    );
+  }
+
+  Widget _buildDetailsSkeleton() {
+    return Container(
+      padding: EdgeInsets.all(24.w),
+      decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.vertical(top: Radius.circular(30.r))),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          SkeletonLoader(width: 100.w, height: 20.h),
+          SizedBox(height: 20.h),
+          SkeletonLoader(width: double.infinity, height: 50.h, borderRadius: 12.r),
+          SizedBox(height: 20.h),
+          SkeletonLoader(width: 150.w, height: 24.h),
+          SizedBox(height: 30.h),
+          SkeletonLoader(width: double.infinity, height: 100.h, borderRadius: 16.r),
+          const Spacer(),
+          SkeletonLoader(width: double.infinity, height: 50.h, borderRadius: 12.r),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildDetailsContent(Map<String, dynamic> args, Color routeColor) {
+    final List<dynamic> stations = args['stations'] ?? [];
+    return Container(
+      padding: EdgeInsets.all(24.w),
+      decoration: BoxDecoration(
+        color: Colors.white, 
+        borderRadius: BorderRadius.vertical(top: Radius.circular(30.r)), 
+        boxShadow: [BoxShadow(color: Colors.black.withAlpha(25), blurRadius: 10, offset: const Offset(0, -5))],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text("Bus Details", style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+          SizedBox(height: 15.h),
+          _buildBusInfoRow(args['busNumber']?.toString() ?? "---", appGreen),
+          SizedBox(height: 15.h),
+          Text("Arrives In ${args['arrivalTime']}", style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: appGreen)),
+          if (args['distance'] != null) Text("Distance: ${args['distance']} KM", style: TextStyle(fontSize: 13, color: Colors.grey)),
+          SizedBox(height: 25.h),
+          _buildRouteFlow(args['from'] ?? "", args['to'] ?? "", appGreen),
+          SizedBox(height: 20.h),
+          const Text("Route", style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+          Expanded(child: ListView.builder(physics: const ClampingScrollPhysics(), padding: EdgeInsets.only(top: 10.h), itemCount: stations.length, itemBuilder: (context, index) {
+            final station = stations[index];
+            var p = station['latLong'].toString().split('&');
+            LatLng pos = LatLng(double.parse(p[0].trim()), double.parse(p[1].trim()));
+            return InkWell(
+              onTap: () => _animatedMapMove(pos, 16.0),
+              child: _buildRouteStep(station['name'] ?? "Station", appGreen, isLast: index == stations.length - 1),
+            );
+          })),
+          _buildTrackButton(args, appGreen),
+        ],
       ),
     );
   }
@@ -240,16 +335,20 @@ class _BusTrackingScreenState extends State<BusTrackingScreen> with TickerProvid
   Widget _buildTrackButton(Map<String, dynamic> args, Color color) {
     return ElevatedButton(
       onPressed: () async {
+        final Map<String, dynamic> trackingArgs = Map<String, dynamic>.from(args);
+        if (_busLocation != null) {
+          trackingArgs['lat'] = _busLocation!.latitude;
+          trackingArgs['lng'] = _busLocation!.longitude;
+        }
+
         final result = await Navigator.push(
           context, 
           CupertinoPageRoute(
             builder: (context) => const TrackingView(), 
-            settings: RouteSettings(arguments: args)
+            settings: RouteSettings(arguments: trackingArgs)
           )
         );
-        if (result == "OPEN_QR" && mounted) {
-          Navigator.pop(context, "OPEN_QR");
-        }
+        if (result == "OPEN_QR" && mounted) Navigator.pop(context, "OPEN_QR");
       }, 
       style: ElevatedButton.styleFrom(backgroundColor: color, minimumSize: Size(double.infinity, 50.h), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12.r))), 
       child: const Text("Track Bus", style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold))

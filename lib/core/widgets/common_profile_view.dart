@@ -1,6 +1,10 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:google_sign_in/google_sign_in.dart';
+import 'package:cached_network_image/cached_network_image.dart';
+import '../networking/supabase_init.dart';
 import '../routes/routes_manager.dart';
 
 class CommonProfileView extends StatelessWidget {
@@ -35,6 +39,7 @@ class CommonProfileView extends StatelessWidget {
         SizedBox(height: 40.h),
         Expanded(
           child: ListView.separated(
+            physics: const ClampingScrollPhysics(),
             padding: EdgeInsets.zero,
             itemCount: menuItems.length,
             separatorBuilder: (context, index) => Padding(
@@ -49,12 +54,9 @@ class CommonProfileView extends StatelessWidget {
   }
 
   Widget _buildHeader(BuildContext context) {
-    ImageProvider profileImage;
-    if (imagePath.startsWith('http')) {
-      profileImage = NetworkImage(imagePath);
-    } else {
-      profileImage = AssetImage(imagePath);
-    }
+    bool isNetwork = imagePath.startsWith('http');
+    bool isAsset = imagePath.contains('assets/');
+    bool hasValidImage = imagePath.isNotEmpty && imagePath != 'assets/logo/3.png';
 
     return Padding(
       padding: EdgeInsets.symmetric(horizontal: 25.w),
@@ -64,10 +66,29 @@ class CommonProfileView extends StatelessWidget {
             onTap: onImageTap,
             child: Stack(
               children: [
-                CircleAvatar(
-                  radius: 50.r,
-                  backgroundColor: const Color(0xFFFFC107).withOpacity(0.2),
-                  backgroundImage: profileImage,
+                Container(
+                  width: 100.r,
+                  height: 100.r,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: Colors.grey[200],
+                    border: Border.all(color: const Color(0xFFFFC107).withOpacity(0.5), width: 2),
+                  ),
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(50.r),
+                    child: isNetwork
+                        ? CachedNetworkImage(
+                            imageUrl: imagePath,
+                            fit: BoxFit.cover,
+                            placeholder: (context, url) => const Center(child: CircularProgressIndicator(strokeWidth: 2)),
+                            errorWidget: (context, url, error) => Icon(Icons.person, size: 50.r, color: Colors.white),
+                          )
+                        : (hasValidImage
+                            ? (isAsset 
+                                ? Image.asset(imagePath, fit: BoxFit.cover)
+                                : Image.file(File(imagePath), fit: BoxFit.cover))
+                            : Icon(Icons.person, size: 50.r, color: Colors.white)),
+                  ),
                 ),
                 Positioned(
                   bottom: 0,
@@ -172,6 +193,14 @@ class CommonProfileView extends StatelessWidget {
               if (driverImg != null) await prefs.setString('selected_driver_avatar', driverImg);
               if (userImg != null) await prefs.setString('selected_profile_avatar', userImg);
               if (driverPhoto != null) await prefs.setString('driverPhoto', driverPhoto);
+
+              try {
+                await GoogleSignIn().signOut();
+                await GoogleSignIn().disconnect();
+                await SupabaseConfig.client.auth.signOut();
+              } catch (e) {
+                debugPrint("SignOut Error: $e");
+              }
 
               if (context.mounted) {
                 RoutesManager.navigateAndRemoveUntil(context, RoutesManager.role);
